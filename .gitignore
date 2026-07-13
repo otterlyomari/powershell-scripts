@@ -18,6 +18,6 @@ Desktop.ini
 .DS_Store
 
 # Text Files
-.txt
-.log
+*.txt
+*.log
 
