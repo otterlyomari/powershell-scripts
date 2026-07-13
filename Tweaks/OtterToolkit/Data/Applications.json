@@ -1,0 +1,41 @@
+[
+    {
+        "Name": "7-Zip",
+        "Description": "File archiver and compression utility.",
+        "Category": "Utilities",
+        "Provider": "Winget",
+        "Id": "7zip.7zip"
+    },
+
+    {
+        "Name": "VLC Media Player",
+        "Description": "Open source media player.",
+        "Category": "Media",
+        "Provider": "Winget",
+        "Id": "VideoLAN.VLC"
+    },
+
+    {
+        "Name": "Discord",
+        "Description": "Communication platform.",
+        "Category": "Communication",
+        "Provider": "Winget",
+        "Id": "Discord.Discord"
+    },
+
+    {
+        "Name": "Visual Studio Code",
+        "Description": "Source code editor.",
+        "Category": "Development",
+        "Provider": "Winget",
+        "Id": "Microsoft.VisualStudioCode"
+    },
+
+    {
+        "Name": "Steam",
+        "Description": "Gaming platform.",
+        "Category": "Gaming",
+        "Provider": "Winget",
+        "Id": "Valve.Steam"
+    }
+]

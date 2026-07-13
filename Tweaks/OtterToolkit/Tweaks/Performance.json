@@ -1,0 +1,16 @@
+[
+  {
+    "Name": "Disable Power Throttling",
+    "Category": "Performance",
+    "Description": "Disables Windows power throttling behavior.",
+    "Actions": [
+      {
+        "Type": "Registry",
+        "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerThrottling",
+        "Name": "PowerThrottlingOff",
+        "Value": 1,
+        "Kind": "DWord"
+      }
+    ]
+  }
+]
