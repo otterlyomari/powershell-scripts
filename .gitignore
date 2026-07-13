@@ -1,0 +1,18 @@
+# VS Code
+.vscode/
+
+# Visual Studio
+.vs/
+
+# Rider
+.idea/
+
+# PowerShell history
+ConsoleHost_history.txt
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
