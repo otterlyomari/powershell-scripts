@@ -2,199 +2,195 @@
 
 <#
 .SYNOPSIS
-Application management module.
+Application management abstraction layer.
 
 .DESCRIPTION
-Provides package manager abstraction
-for installing and managing applications.
+Provides a unified interface for installing,
+searching, and managing applications through
+OtterToolkit providers.
+
+Providers handle the actual package manager
+communication.
+
+Supported providers may include:
+
+- Winget
+- Scoop
+- Chocolatey
+- Microsoft Store
+- Steam
+- Portable applications
+
+This module acts as the backend API layer
+for both the CLI interface and future WinUI
+frontend.
+
+.NOTES
+Providers should expose functions following:
+
+Get-<Provider>Applications
+Install-<Provider>Application
+Test-<Provider>Available
 #>
 
 
-#region Providers
+#region Provider Discovery
 
 
-function Test-WingetAvailable {
+function Get-ToolkitApplicationProviders {
+
+    <#
+    .SYNOPSIS
+    Gets available application providers.
+
+    .DESCRIPTION
+    Searches loaded modules for providers
+    capable of managing applications.
+    #>
 
 
-    return (
-        Get-Command winget `
-            -ErrorAction SilentlyContinue
-    )
+    [CmdletBinding()]
 
-}
+    param()
 
 
+    $Providers =
+        @()
 
-function Test-ScoopAvailable {
-
-
-    return (
-        Get-Command scoop `
-            -ErrorAction SilentlyContinue
-    )
-
-}
-
-
-
-function Install-WingetApplication {
-
-
-    param(
-        [Parameter(Mandatory)]
-        [string]$Id
-    )
-
-
-    Write-ToolkitInfo `
-        "Installing via Winget: $Id"
-
-
-    winget install `
-        --id $Id `
-        --accept-package-agreements `
-        --accept-source-agreements
-
-}
-
-
-
-function Install-ScoopApplication {
-
-
-    param(
-        [Parameter(Mandatory)]
-        [string]$Id
-    )
-
-
-    Write-ToolkitInfo `
-        "Installing via Scoop: $Id"
-
-
-    scoop install $Id
-
-}
-
-
-#endregion
-
-
-
-#region Public API
-
-
-function Get-ToolkitPackageManagers {
-
-
-    $Managers = @()
-
-
-    if (Test-WingetAvailable) {
-
-        $Managers += "Winget"
-
-    }
-
-
-    if (Test-ScoopAvailable) {
-
-        $Managers += "Scoop"
-
-    }
-
-
-    return $Managers
-
-}
-
-
-
-function Install-ToolkitApplication {
-
-
-    [CmdletBinding(
-        SupportsShouldProcess = $true
-    )]
-
-    param(
-
-        [Parameter(Mandatory)]
-        [string]$Id,
-
-
-        [ValidateSet(
-            "Winget",
-            "Scoop"
-        )]
-        [string]$Provider = "Winget"
-
-    )
 
 
     if (
-        $PSCmdlet.ShouldProcess(
-            $Id,
-            "Install application"
-        )
+        Get-Command `
+            Test-WingetAvailable `
+            -ErrorAction SilentlyContinue
     ) {
 
-
-        switch ($Provider) {
-
-
-            "Winget" {
-
-
-                Install-WingetApplication `
-                    $Id
-
-            }
-
-
-
-            "Scoop" {
-
-
-                Install-ScoopApplication `
-                    $Id
-
-            }
-
-        }
-
-
-        Write-ToolkitInfo `
-            "Installation completed: $Id"
+        $Providers += "Winget"
 
     }
+
+
+
+    if (
+        Get-Command `
+            Test-ScoopAvailable `
+            -ErrorAction SilentlyContinue
+    ) {
+
+        $Providers += "Scoop"
+
+    }
+
+
+
+    if (
+        Get-Command `
+            Test-ChocolateyAvailable `
+            -ErrorAction SilentlyContinue
+    ) {
+
+        $Providers += "Chocolatey"
+
+    }
+
+
+
+    return $Providers
+
+}
+
+
+
+#endregion
+
+
+
+#region Provider Validation
+
+
+function Test-ToolkitApplicationProvider {
+
+    <#
+    .SYNOPSIS
+    Tests whether an application provider exists.
+
+    .PARAMETER Provider
+    Provider name.
+
+    .EXAMPLE
+    Test-ToolkitApplicationProvider Winget
+    #>
+
+
+    [CmdletBinding()]
+
+    param(
+
+        [Parameter(
+            Mandatory
+        )]
+
+        [string]
+        $Provider
+
+    )
+
+
+    return (
+        (Get-ToolkitApplicationProviders) -contains $Provider
+    )
 
 }
 
 
 #endregion
 
-#region Data
+
+
+#region Application Database
 
 
 $ApplicationDataPath =
-Join-Path `
-    $PSScriptRoot `
-    "..\Data\Applications.json"
+    Join-Path `
+        $PSScriptRoot `
+        "..\Data\Applications.json"
 
 
 
 function Get-ApplicationDefinitions {
 
+    <#
+    .SYNOPSIS
+    Loads application definitions.
 
-    if (-not (Test-Path $ApplicationDataPath)) {
+    .DESCRIPTION
+    Reads the optional application database.
+
+    This allows the CLI and WinUI frontend
+    to share the same application catalog.
+    #>
 
 
-        throw `
-        "Application database missing."
+    [CmdletBinding()]
 
+    param()
+
+
+
+    if (
+        -not (
+            Test-Path $ApplicationDataPath
+        )
+    ) {
+
+        Write-ToolkitWarning `
+            "Application database not found."
+
+
+        return @()
 
     }
+
 
 
     Get-Content `
@@ -210,10 +206,28 @@ function Get-ApplicationDefinitions {
 
 
 
-#region Public Data API
+#region Public Application API
 
 
 function Get-ToolkitApplications {
+
+    <#
+    .SYNOPSIS
+    Gets available applications.
+
+    .DESCRIPTION
+    Returns applications from the
+    OtterToolkit database.
+
+    .OUTPUTS
+    PSCustomObject
+    #>
+
+
+    [CmdletBinding()]
+
+    param()
+
 
 
     Get-ApplicationDefinitions
@@ -224,9 +238,29 @@ function Get-ToolkitApplications {
 
 function Get-ToolkitApplicationsByCategory {
 
+    <#
+    .SYNOPSIS
+    Filters applications by category.
+
+    .PARAMETER Category
+    Category name.
+
+    .EXAMPLE
+    Get-ToolkitApplicationsByCategory Browsers
+    #>
+
+
+    [CmdletBinding()]
 
     param(
-        [string]$Category
+
+        [Parameter(
+            Mandatory
+        )]
+
+        [string]
+        $Category
+
     )
 
 
@@ -241,7 +275,170 @@ function Get-ToolkitApplicationsByCategory {
 
 
 
+function Find-ToolkitApplication {
+
+    <#
+    .SYNOPSIS
+    Searches the application database.
+
+    .PARAMETER Query
+    Search text.
+
+    .EXAMPLE
+    Find-ToolkitApplication Firefox
+    #>
+
+
+    [CmdletBinding()]
+
+    param(
+
+        [Parameter(
+            Mandatory
+        )]
+
+        [string]
+        $Query
+
+    )
+
+
+    Get-ToolkitApplications |
+    Where-Object {
+
+
+        $_.Name -like "*$Query*" -or
+
+        $_.Description -like "*$Query*"
+
+    }
+
+}
+
+
+
+function Install-ToolkitApplication {
+
+    <#
+    .SYNOPSIS
+    Installs an application.
+
+    .DESCRIPTION
+    Routes installation requests
+    through the selected provider.
+
+    .PARAMETER Id
+    Provider package ID.
+
+    .PARAMETER Provider
+    Installation provider.
+
+    .EXAMPLE
+    Install-ToolkitApplication `
+        -Id Mozilla.Firefox `
+        -Provider Winget
+    #>
+
+
+    [CmdletBinding(
+        SupportsShouldProcess
+    )]
+
+
+    param(
+
+        [Parameter(
+            Mandatory
+        )]
+
+        [string]
+        $Id,
+
+
+        [Parameter()]
+
+        [string]
+        $Provider = "Winget"
+
+    )
+
+
+
+    if (
+        -not (
+            Test-ToolkitApplicationProvider $Provider
+        )
+    ) {
+
+        throw `
+            "Application provider unavailable: $Provider"
+
+    }
+
+
+
+    if (
+        $PSCmdlet.ShouldProcess(
+            $Id,
+            "Install application using $Provider"
+        )
+    ) {
+
+
+        switch ($Provider) {
+
+
+            "Winget" {
+
+                Install-WingetApplication `
+                    -Id $Id
+
+                break
+
+            }
+
+
+            "Scoop" {
+
+                Install-ScoopApplication `
+                    -Id $Id
+
+                break
+
+            }
+
+
+            "Chocolatey" {
+
+                Install-ChocolateyApplication `
+                    -Id $Id
+
+                break
+
+            }
+
+
+            default {
+
+                throw `
+                "Provider does not support installation: $Provider"
+
+            }
+
+        }
+
+
+        Write-ToolkitInfo `
+            "Installed application: $Id"
+
+    }
+
+}
+
+
+
 #endregion
+
 
 
 Export-ModuleMember -Function *
