@@ -1,16 +1,33 @@
 #Requires -Version 7.0
 #Requires -RunAsAdministrator
 
+<#
+.SYNOPSIS
+OtterToolkit main entry point.
+
+.DESCRIPTION
+Loads toolkit modules and starts
+the interactive CLI interface.
+#>
+
+
+#region Module Loading
+
+
 $ModulePath =
-    Join-Path `
-        $PSScriptRoot `
-        "Modules"
+Join-Path `
+    $PSScriptRoot `
+    "Modules"
+
 
 
 Get-ChildItem `
     $ModulePath `
-    -Filter "*.psm1" |
+    -Filter "*.psm1" `
+    -Recurse |
+Sort-Object FullName |
 ForEach-Object {
+
 
     Import-Module `
         $_.FullName `
@@ -19,16 +36,28 @@ ForEach-Object {
 }
 
 
+#endregion
+
+
+
+#region Startup
+
 
 Confirm-ToolkitEnvironment
 
 Start-ToolkitSession
 
+
+
+Clear-Host
+
+
 Write-Host ""
 Write-Host "================================="
-Write-Host "        Windows Toolkit"
+Write-Host "        OtterToolkit"
 Write-Host "================================="
 Write-Host ""
+
 
 Write-Host "Windows:"
 Get-WindowsVersion |
@@ -36,21 +65,40 @@ Format-Table
 
 
 Write-Host ""
-Write-Host "Toolkit loaded successfully."
+Write-ToolkitInfo `
+    "Toolkit loaded successfully."
+
+
 
 Pause
 
+
+
+#endregion
+
+
+
+#region Main Menu
+
+
 $MainMenu = @{
+
     "1" = "Windows Tweaks"
+
     "2" = "Applications"
+
     "3" = "Windows Components"
+
     "4" = "Diagnostics"
+
     "5" = "Settings"
+
 }
 
 
 
 while ($true) {
+
 
     $Selection =
         Show-ToolkitMenu `
@@ -59,12 +107,19 @@ while ($true) {
 
 
 
-    if ($Selection -eq "Exit") {
+    if (
+        $Selection -eq "Exit"
+    ) {
 
         Write-ToolkitInfo `
             "Toolkit closed."
 
+        # todo: add a 15-25 second delay before calling Clear-Host
+        # commented out temporarily until this todo is finished
+        #Clear-Host
+
         break
+
     }
 
 
@@ -72,152 +127,39 @@ while ($true) {
     switch ($Selection) {
 
 
+        #----------------------------------
+        # Tweaks
+        #----------------------------------
+
         "1" {
 
+
+            Write-Host ""
             Write-Host "Tweaks module not loaded yet."
+
             Pause
 
         }
 
 
-"2" {
+
+        #----------------------------------
+        # Applications
+        #----------------------------------
+
+        "2" {
 
 
-    while ($true) {
+            Start-ApplicationManager
 
-
-        $AppMenu = @{
-
-            "1" = "Recommended Applications"
-
-            "2" = "Install Application"
-
-            "3" = "Available Package Managers"
-
-            "4" = "Back"
 
         }
 
 
 
-        $Choice =
-            Show-ToolkitMenu `
-                -Title "Applications" `
-                -Options $AppMenu
-
-
-
-        if ($Choice -eq "Exit" -or $Choice -eq "4") {
-
-            break
-
-        }
-
-
-
-        switch ($Choice) {
-
-
-            "1" {
-
-
-                Write-Host ""
-
-                Write-Host "Recommended Applications:"
-                Write-Host ""
-
-
-                Get-ToolkitApplications |
-                Format-Table `
-                    Name,
-                    Category,
-                    Id `
-                    -AutoSize
-
-
-
-                Pause
-
-            }
-
-
-
-            "2" {
-
-
-                        Write-Host ""
-
-                        $Provider =
-                            Read-Host `
-                            "Package manager (Winget/Scoop)"
-
-
-                        $Id =
-                            Read-Host `
-                            "Application ID"
-
-
-
-                        Install-ToolkitApplication `
-                            -Id $Id `
-                            -Provider $Provider
-
-
-
-                        Pause
-
-                    }
-
-
-
-                    "3" {
-
-
-                        Write-Host ""
-
-                        Write-Host "Available package managers:"
-                        Write-Host ""
-
-
-                        $Managers =
-                            Get-ToolkitPackageManagers
-
-
-
-                        if ($Managers.Count -eq 0) {
-
-
-                            Write-Warning `
-                                "No supported package managers found."
-
-
-                        }
-
-                        else {
-
-
-                            foreach ($Manager in $Managers) {
-
-                                Write-Host "- $Manager"
-
-                            }
-
-                        }
-
-
-
-                        Pause
-
-                    }
-
-
-                }
-
-            }
-
-
-        }
-
+        #----------------------------------
+        # Windows Components
+        #----------------------------------
 
         "3" {
 
@@ -246,7 +188,10 @@ while ($true) {
 
 
 
-                if ($Choice -eq "Exit" -or $Choice -eq "4") {
+                if (
+                    $Choice -eq "Exit" -or
+                    $Choice -eq "4"
+                ) {
 
                     break
 
@@ -259,8 +204,14 @@ while ($true) {
 
                     "1" {
 
+
                         Get-ToolkitComponents |
-                        Format-Table
+                        Format-Table `
+                            Name,
+                            State,
+                            Provider `
+                            -AutoSize
+
 
 
                         Pause
@@ -277,8 +228,10 @@ while ($true) {
                             "Component name"
 
 
+
                         Enable-ToolkitComponent `
                             -Name $Name
+
 
 
                         Pause
@@ -295,8 +248,10 @@ while ($true) {
                             "Component name"
 
 
+
                         Disable-ToolkitComponent `
                             -Name $Name
+
 
 
                         Pause
@@ -306,27 +261,47 @@ while ($true) {
 
                 }
 
+
             }
 
 
         }
 
 
+
+        #----------------------------------
+        # Diagnostics
+        #----------------------------------
+
         "4" {
 
-            Write-Host "Diagnostics module not loaded yet."
+            Start-DiagnosticsManager
+
             Pause
 
         }
 
+
+
+        #----------------------------------
+        # Settings
+        #----------------------------------
 
         "5" {
 
+
+            Write-Host ""
             Write-Host "Settings module not loaded yet."
+
             Pause
 
         }
 
+
     }
 
+
 }
+
+
+#endregion

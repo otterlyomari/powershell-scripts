@@ -95,7 +95,7 @@ function Get-ToolkitConfig {
 
     $ConfigPath =
         Get-ToolkitPath `
-            "Data\Config.json"
+            "Data\toolkit_config.json"
 
 
     if (-not (Test-Path $ConfigPath)) {

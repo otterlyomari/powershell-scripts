@@ -1,27 +1,5 @@
 #Requires -Version 7.0
 
-$CommonProvider =
-    Join-Path `
-        $PSScriptRoot `
-        "Common.Provider.psm1"
-
-
-if (
-    Test-Path $CommonProvider
-) {
-
-    Import-Module `
-        $CommonProvider `
-        -Force
-
-}
-else {
-
-    throw `
-        "Common.Provider.psm1 is required."
-
-}
-
 <#
 .SYNOPSIS
 Winget application provider.
@@ -39,6 +17,28 @@ Requires:
 .NOTES
 Part of OtterToolkit application providers.
 #>
+
+$CommonProvider =
+    Join-Path `
+        $PSScriptRoot `
+        "Common.Provider.psm1"
+
+
+if (
+    Test-Path $CommonProvider
+) {
+
+    Import-Module `
+        $CommonProvider `
+        -ErrorAction Stop
+
+}
+else {
+
+    throw `
+        "Common.Provider.psm1 is required."
+
+}
 
 
 #region Provider Metadata
@@ -87,17 +87,14 @@ function Test-WingetAvailable {
     .SYNOPSIS
     Tests if winget is installed.
     #>
-
-
+    
     [CmdletBinding()]
-
     param()
 
-
-    return (
-        Test-ProviderCommand `
-            "winget"
+    return [bool](
+        Test-ProviderCommand "winget"
     )
+
 
 }
 
@@ -178,6 +175,156 @@ function Search-WingetApplication {
 
 
     $Result.Output
+
+}
+
+function Search-WingetPackages {
+
+<#
+.SYNOPSIS
+Searches winget packages.
+
+.DESCRIPTION
+Internal helper used by package providers.
+
+.PARAMETER Query
+Search query.
+
+.PARAMETER Source
+Optional winget source.
+#>
+
+
+[CmdletBinding()]
+
+param(
+
+    [Parameter(Mandatory)]
+    [string]
+    $Query,
+
+
+    [string]
+    $Source
+
+)
+
+
+
+$Arguments =
+@(
+    "search",
+    $Query,
+    "--accept-source-agreements"
+)
+
+
+
+if ($Source) {
+
+    $Arguments += @(
+        "--source",
+        $Source
+    )
+
+}
+
+
+
+$Result =
+    Invoke-ProviderCommand `
+        -FilePath "winget" `
+        -Arguments $Arguments
+
+
+
+$Packages =
+    New-Object `
+        System.Collections.Generic.List[object]
+
+
+
+foreach(
+    $Line in (
+        $Result.Output -split "`n"
+    )
+) {
+
+    $Line =
+        $Line.Trim()
+
+
+    # Skip blank lines, the column header row, and the "----" divider.
+    # Without this, winget's own "Name  Id  Version" header can match
+    # the data regex below and produce a fake package entry.
+
+    if (
+        $Line -eq "" -or
+        $Line -match "^Name\s+Id\s+Version" -or
+        $Line -match "^-+$" -or
+        $Line -match "^Windows Package Manager"
+    ) {
+
+        continue
+
+    }
+
+
+    #
+    # Winget columns: Name  Id  Version  [Match]
+    #
+    # Version is a single non-whitespace token. Anything after it
+    # (separated by 2+ spaces) is an optional 4th "Match" column
+    # (e.g. "Tag: spotify", "Moniker: foo", "ProductCode: bar") and
+    # must NOT be swallowed into Version.
+
+    if (
+        $Line -match
+        "^(.+?)\s{2,}([A-Za-z0-9\.\-_]+)\s{2,}(\S+)(?:\s{2,}(.+))?$"
+    )
+    {
+
+
+        $Packages.Add(
+
+            [PSCustomObject]@{
+
+                Name =
+                    $Matches[1].Trim()
+
+                Id =
+                    $Matches[2].Trim()
+
+                Version =
+                    $Matches[3].Trim()
+
+                MatchReason =
+                    if ($Matches[4]) {
+                        $Matches[4].Trim()
+                    }
+                    else {
+                        $null
+                    }
+
+                Provider =
+                    "Winget"
+
+                Source =
+                    $Source
+
+                Installed =
+                    $false
+
+            }
+
+        )
+
+    }
+
+}
+
+
+return $Packages
 
 }
 

@@ -1,5 +1,25 @@
 #Requires -Version 7.0
 
+<#
+.SYNOPSIS
+Scoop application provider.
+
+.DESCRIPTION
+Provides Scoop integration for OtterToolkit.
+
+Scoop is a command-line installer for Windows
+applications and developer tools.
+
+This module abstracts Scoop commands behind
+the OtterToolkit provider interface.
+
+Requires:
+- Scoop package manager
+
+.NOTES
+Part of OtterToolkit application providers.
+#>
+
 $CommonProvider =
     Join-Path `
         $PSScriptRoot `
@@ -21,26 +41,6 @@ else {
         "Common.Provider.psm1 is required."
 
 }
-
-<#
-.SYNOPSIS
-Scoop application provider.
-
-.DESCRIPTION
-Provides Scoop integration for OtterToolkit.
-
-Scoop is a command-line installer for Windows
-applications and developer tools.
-
-This module abstracts Scoop commands behind
-the OtterToolkit provider interface.
-
-Requires:
-- Scoop package manager
-
-.NOTES
-Part of OtterToolkit application providers.
-#>
 
 
 #region Provider Metadata
@@ -81,21 +81,14 @@ function Get-ScoopProviderManifest {
 
 #region Availability
 
-
 function Test-ScoopAvailable {
-
-    <#
-    .SYNOPSIS
-    Tests if Scoop is installed.
-    #>
-
 
     [CmdletBinding()]
 
     param()
 
 
-    return (
+    return [bool](
         Test-ProviderCommand `
             "scoop"
     )
@@ -106,17 +99,10 @@ function Test-ScoopAvailable {
 
 function Get-ScoopExecutable {
 
-    <#
-    .SYNOPSIS
-    Returns Scoop executable path.
-    #>
-
-
     Get-ProviderExecutable `
         "scoop"
 
 }
-
 
 #endregion
 

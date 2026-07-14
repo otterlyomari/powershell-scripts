@@ -6,18 +6,16 @@ Windows tweak management engine.
 
 .DESCRIPTION
 Loads tweak definitions from JSON
-and applies them safely.
+and safely applies tweak actions.
 #>
 
 
 #region Paths
 
-
 $TweakDirectory =
 Join-Path `
     $PSScriptRoot `
-    "..\Tweaks"
-
+    "..\..\Tweaks"
 
 
 #endregion
@@ -29,28 +27,44 @@ Join-Path `
 
 function Get-TweakDefinitions {
 
+    [CmdletBinding()]
+
+    param()
+
 
     if (-not (Test-Path $TweakDirectory)) {
 
         throw `
-        "Tweak directory missing."
+        "Tweak directory missing: $TweakDirectory"
 
     }
 
 
     Get-ChildItem `
-        $TweakDirectory `
-        -Filter *.json |
+        -Path $TweakDirectory `
+        -Filter "*.json" |
     ForEach-Object {
 
 
-        Get-Content `
-            $_.FullName `
-            -Raw |
-        ConvertFrom-Json
+        try {
+
+            Get-Content `
+                -Path $_.FullName `
+                -Raw |
+            ConvertFrom-Json
+
+        }
+
+        catch {
+
+            Write-Warning `
+                "Failed loading tweak file: $($_.Name)"
+
+        }
 
 
     }
+
 
 }
 
@@ -65,9 +79,13 @@ function Get-TweakDefinitions {
 
 function Invoke-TweakRegistryAction {
 
+    [CmdletBinding()]
 
     param(
+
+        [Parameter(Mandatory)]
         $Action
+
     )
 
 
@@ -76,9 +94,10 @@ function Invoke-TweakRegistryAction {
         New-Item `
             -Path $Action.Path `
             -Force |
-            Out-Null
+        Out-Null
 
     }
+
 
 
     New-ItemProperty `
@@ -86,7 +105,9 @@ function Invoke-TweakRegistryAction {
         -Name $Action.Name `
         -Value $Action.Value `
         -PropertyType $Action.Kind `
-        -Force
+        -Force |
+    Out-Null
+
 
 }
 
@@ -94,9 +115,13 @@ function Invoke-TweakRegistryAction {
 
 function Invoke-TweakAction {
 
+    [CmdletBinding()]
 
     param(
+
+        [Parameter(Mandatory)]
         $Action
+
     )
 
 
@@ -107,7 +132,8 @@ function Invoke-TweakAction {
 
 
             Invoke-TweakRegistryAction `
-                $Action
+                -Action $Action
+
 
         }
 
@@ -116,11 +142,14 @@ function Invoke-TweakAction {
 
 
             throw `
-            "Unknown tweak action type: $($Action.Type)"
+            "Unsupported tweak action type: $($Action.Type)"
+
 
         }
 
+
     }
+
 
 }
 
@@ -135,15 +164,44 @@ function Invoke-TweakAction {
 
 function Get-ToolkitTweaks {
 
+    [CmdletBinding()]
+
+    param()
+
 
     Get-TweakDefinitions
+
+
+}
+
+
+
+function Get-ToolkitTweak {
+
+    [CmdletBinding()]
+
+    param(
+
+        [Parameter(Mandatory)]
+        [string]
+        $Name
+
+    )
+
+
+    Get-ToolkitTweaks |
+    Where-Object {
+
+        $_.Name -eq $Name
+
+    }
+
 
 }
 
 
 
 function Invoke-ToolkitTweak {
-
 
     [CmdletBinding(
         SupportsShouldProcess = $true
@@ -152,18 +210,15 @@ function Invoke-ToolkitTweak {
     param(
 
         [Parameter(Mandatory)]
-        [string]$Name
+        [string]
+        $Name
 
     )
 
 
     $Tweak =
-        Get-ToolkitTweaks |
-        Where-Object {
-
-            $_.Name -eq $Name
-
-        }
+        Get-ToolkitTweak `
+            -Name $Name
 
 
 
@@ -193,15 +248,19 @@ function Invoke-ToolkitTweak {
 
 
             Invoke-TweakAction `
-                $Action
+                -Action $Action
+
 
         }
 
 
+
         Write-ToolkitInfo `
-            "Tweak applied: $Name"
+            "Tweak applied successfully: $Name"
+
 
     }
+
 
 }
 
@@ -211,4 +270,5 @@ function Invoke-ToolkitTweak {
 
 
 
-Export-ModuleMember -Function *
+Export-ModuleMember `
+    -Function *

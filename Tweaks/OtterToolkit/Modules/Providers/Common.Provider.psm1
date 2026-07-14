@@ -102,6 +102,45 @@ function Test-ProviderCommand {
 
 }
 
+function Write-ToolkitInfo {
+
+    param(
+        [Parameter(Mandatory)]
+        [string]
+        $Message
+    )
+
+    Write-Host "[INFO] $Message"
+
+}
+
+
+
+function Write-ToolkitWarning {
+
+    param(
+        [Parameter(Mandatory)]
+        [string]
+        $Message
+    )
+
+    Write-Host "[WARN] $Message"
+
+}
+
+function Write-ToolkitError {
+
+    param(
+        [Parameter(Mandatory)]
+        [string]
+        $Message
+    )
+
+
+    Write-Host "[ERROR] $Message"
+
+}
+
 
 function Get-ProviderExecutable {
 
